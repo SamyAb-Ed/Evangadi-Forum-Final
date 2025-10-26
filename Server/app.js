@@ -8,7 +8,11 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: [
+      process.env.CLIENT_URL || "http://localhost:5173",
+      "https://evangadi-forum-final.netlify.app",
+      "https://*.netlify.app"
+    ],
     credentials: true,
   })
 );
