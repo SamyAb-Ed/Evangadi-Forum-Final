@@ -35,6 +35,7 @@ const Register = () => {
     }
 
     try {
+      console.log("Sending registration request...");
       // send to backend
       const res = await axiosInstance.post("/user/register", {
         username,
@@ -44,6 +45,7 @@ const Register = () => {
         user_password: password,
       });
 
+      console.log("Registration response:", res.data);
       // show backend message
       setSuccess(res.data.message || "Registered successfully! Redirecting...");
       setError("");
@@ -51,6 +53,7 @@ const Register = () => {
       // redirect to login
       setTimeout(() => navigate("/login"), 1000);
     } catch (err) {
+      console.error("Registration error:", err.response?.data || err.message);
       setError(err.response?.data?.message || "Something went wrong");
       setSuccess("");
     }

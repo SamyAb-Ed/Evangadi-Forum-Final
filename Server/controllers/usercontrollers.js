@@ -2,9 +2,10 @@
 const dbconnection = require("../Database/databaseconfig");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const sendEmail =require("../utils/emailSender")
+const sendEmail = require("../utils/emailSender");
 // ------------------- Register -------------------
 async function register(req, res) {
+  console.log("Registration attempt:", req.body);
   let { username, firstname, lastname, email, user_password } = req.body;
 
   //  Combined empty field checks
@@ -16,6 +17,7 @@ async function register(req, res) {
   if (!user_password) errors.push("Password is required");
 
   if (errors.length) {
+    console.log("Validation errors:", errors);
     return res.status(400).json({ message: "Validation error", errors });
   }
 
@@ -29,12 +31,14 @@ async function register(req, res) {
   }
 
   try {
+    console.log("Checking username uniqueness...");
     // Check username uniqueness
     const [usernameValidation] = await dbconnection.query(
       "SELECT * FROM users WHERE username= ?",
       [username]
     );
 
+    console.log("Checking email uniqueness...");
     // Check email uniqueness
     const [emailValidation] = await dbconnection.query(
       "SELECT * FROM users WHERE email=?",
@@ -42,31 +46,38 @@ async function register(req, res) {
     );
 
     if (usernameValidation.length > 0) {
+      console.log("Username already exists");
       return res
         .status(400)
         .json({ status: "Failed", message: "Username Already Exists" });
     }
 
     if (emailValidation.length > 0) {
+      console.log("Email already exists");
       return res
         .status(400)
         .json({ status: "Failed", message: "Email Already in Use" });
     }
 
+    console.log("Hashing password...");
     // Hash the password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(user_password, saltRounds);
 
+    console.log("Inserting user into database...");
     // Insert new user into database
     await dbconnection.query(
       "INSERT INTO users (username, firstname, lastname, email, user_password) VALUES (?, ?, ?, ?, ?)",
       [username, firstname, lastname, email, hashedPassword]
     );
 
+    console.log("User registered successfully");
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
     console.error("Error registering user:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 }
 // ------------------- Login -------------------
@@ -112,7 +123,7 @@ async function login(req, res) {
       msg: "user login successful",
       token,
       username,
-      userid, 
+      userid,
     });
   } catch (error) {
     console.error("Error logging in:", error);
@@ -176,65 +187,65 @@ const forgotPassword = async (req, res) => {
 };
 
 // ------------------- Reset Password -------------------
- const resetPassword = async (req, res) => {
-   const { email, otp, newPassword } = req.body;
+const resetPassword = async (req, res) => {
+  const { email, otp, newPassword } = req.body;
 
-   if (!email || !otp || !newPassword) {
-     return res.status(400).json({ message: "All fields are required" });
-   }
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
 
-   const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
-   if (!passwordRegex.test(newPassword)) {
-     return res.status(400).json({
-       message:
-         "Password must be at least 8 characters, include one uppercase letter, one number, and one special character",
-     });
-   }
+  if (!passwordRegex.test(newPassword)) {
+    return res.status(400).json({
+      message:
+        "Password must be at least 8 characters, include one uppercase letter, one number, and one special character",
+    });
+  }
 
-   try {
-     //  Get user by email ONLY
-     const [rows] = await dbconnection.query(
-       "SELECT reset_otp, otp_expiration FROM users WHERE email = ?",
-       [email]
-     );
+  try {
+    //  Get user by email ONLY
+    const [rows] = await dbconnection.query(
+      "SELECT reset_otp, otp_expiration FROM users WHERE email = ?",
+      [email]
+    );
 
-     if (rows.length === 0) {
-       return res.status(404).json({ message: "Email not found" });
-     }
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Email not found" });
+    }
 
-     const user = rows[0];
+    const user = rows[0];
 
-     //  Check OTP expiration
-     if (!user.otp_expiration || new Date(user.otp_expiration) < new Date()) {
-       return res.status(400).json({ message: "OTP has expired" });
-     }
+    //  Check OTP expiration
+    if (!user.otp_expiration || new Date(user.otp_expiration) < new Date()) {
+      return res.status(400).json({ message: "OTP has expired" });
+    }
 
-     //  Compare OTP using bcrypt
-     const isOtpValid = await bcrypt.compare(otp, user.reset_otp);
-     if (!isOtpValid) {
-       return res.status(400).json({ message: "Invalid OTP" });
-     }
+    //  Compare OTP using bcrypt
+    const isOtpValid = await bcrypt.compare(otp, user.reset_otp);
+    if (!isOtpValid) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
 
-     //  Hash new password
-     const hashedPassword = await bcrypt.hash(newPassword, 10);
+    //  Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-     //  Update password & clear OTP fields
-     await dbconnection.query(
-       "UPDATE users SET user_password = ?, reset_otp = NULL, otp_expiration = NULL WHERE email = ?",
-       [hashedPassword, email]
-     );
+    //  Update password & clear OTP fields
+    await dbconnection.query(
+      "UPDATE users SET user_password = ?, reset_otp = NULL, otp_expiration = NULL WHERE email = ?",
+      [hashedPassword, email]
+    );
 
-     res.json({ message: "Password reset successful! You can now login." });
-   } catch (err) {
-     console.error("Reset password error:", err);
-     res.status(500).json({ message: "Server error" });
-   }
- };
+    res.json({ message: "Password reset successful! You can now login." });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 module.exports = {
   register,
   login,
   checkuser,
   resetPassword,
-  forgotPassword
+  forgotPassword,
 };
