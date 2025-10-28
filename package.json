@@ -1,0 +1,12 @@
+{
+  "name": "evangadi-forum-final",
+  "version": "1.0.0",
+  "description": "Full-stack forum application",
+  "scripts": {
+    "build": "cd Client && npm run build",
+    "start": "cd Client && npm run preview"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
