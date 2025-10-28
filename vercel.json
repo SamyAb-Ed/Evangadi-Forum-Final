@@ -17,5 +17,10 @@
   ],
   "env": {
     "VITE_API_BASE_URL": "https://evangadi-forum-final.onrender.com/api"
+  },
+  "functions": {
+    "Client/package.json": {
+      "runtime": "nodejs22.x"
+    }
   }
 }

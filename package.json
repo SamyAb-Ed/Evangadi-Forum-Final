@@ -7,6 +7,6 @@
     "start": "cd Client && npm run preview"
   },
   "engines": {
-    "node": "18.x"
+    "node": "22.x"
   }
 }
