@@ -10,7 +10,6 @@ app.use(
   cors({
     origin: [
       process.env.CLIENT_URL || "https://evangadi-forum-final-v2.vercel.app/",
-      
     ],
     credentials: true,
   })
